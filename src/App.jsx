@@ -28,8 +28,10 @@ function App() {
 
   const [studyTime, setStudyTime] = useState(25);
   const [breakTime, setBreakTime] = useState(5);
+  const [taskTimerMinutes, setTaskTimerMinutes] = useState(25);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState(null);
 
   function showMessage(text, type = "info") {
     setMessage(text);
@@ -167,6 +169,7 @@ function App() {
     setPriority("Medium");
     setActiveSubtaskTaskId(null);
     setSubtaskText("");
+    setActiveTaskId(null);
     setIsRunning(false);
     setSecondsLeft(studyTime * 60);
     localStorage.removeItem("studyBuddyCurrentUser");
@@ -218,6 +221,9 @@ function App() {
     setSelectedPlanId(id);
     setActiveSubtaskTaskId(null);
     setSubtaskText("");
+    setActiveTaskId(null);
+    setIsRunning(false);
+    setSecondsLeft(studyTime * 60);
 
     if (selectedPlan) {
       setSubject(selectedPlan.title);
@@ -236,6 +242,9 @@ function App() {
 
       setSelectedPlanId(nextPlan ? nextPlan.id : null);
       setSubject(nextPlan ? nextPlan.title : "");
+      setActiveTaskId(null);
+      setIsRunning(false);
+      setSecondsLeft(studyTime * 60);
     }
 
     showMessage("Study plan deleted.", "info");
@@ -257,6 +266,7 @@ function App() {
       subject: subject.trim(),
       text: task.trim(),
       priority,
+      timerMinutes: taskTimerMinutes,
       completed: false,
       subtasks: [],
       createdAt: new Date().toLocaleDateString(),
@@ -272,6 +282,7 @@ function App() {
 
     setTask("");
     setPriority("Medium");
+    setTaskTimerMinutes(studyTime);
 
     showMessage("Task added to selected plan.", "success");
   }
@@ -306,6 +317,12 @@ function App() {
     if (activeSubtaskTaskId === id) {
       setActiveSubtaskTaskId(null);
       setSubtaskText("");
+    }
+
+    if (activeTaskId === id) {
+      setActiveTaskId(null);
+      setIsRunning(false);
+      setSecondsLeft(studyTime * 60);
     }
 
     showMessage("Task deleted.", "info");
@@ -403,6 +420,7 @@ function App() {
     setSecondsLeft(studyTime * 60);
     setActiveSubtaskTaskId(null);
     setSubtaskText("");
+    setActiveTaskId(null);
 
     showMessage("All tasks in this plan were cleared.", "info");
   }
@@ -411,6 +429,7 @@ function App() {
     if (value < 1) return;
 
     setStudyTime(value);
+    setTaskTimerMinutes(value);
 
     if (!isRunning) {
       setSecondsLeft(value * 60);
@@ -422,19 +441,11 @@ function App() {
     setBreakTime(value);
   }
 
-  function startTimer() {
-    if (!selectedPlanId) {
-      showMessage("Please open a study plan before starting.", "error");
-      return;
-    }
-
-    if (selectedPlanTasks.length === 0) {
-      showMessage("Please add at least one task before starting.", "error");
-      return;
-    }
-
+  function startTaskTimer(taskId, timerMinutes) {
+    setActiveTaskId(taskId);
+    setSecondsLeft(timerMinutes * 60);
     setIsRunning(true);
-    showMessage("Focus session started.", "success");
+    showMessage("Focus timer started for this task.", "success");
   }
 
   function pauseTimer() {
@@ -444,7 +455,14 @@ function App() {
 
   function resetTimer() {
     setIsRunning(false);
-    setSecondsLeft(studyTime * 60);
+
+    const activeTask = selectedPlanTasks.find((item) => item.id === activeTaskId);
+
+    if (activeTask) {
+      setSecondsLeft(activeTask.timerMinutes * 60);
+    } else {
+      setSecondsLeft(studyTime * 60);
+    }
 
     showMessage("Timer was reset.", "info");
   }
@@ -770,14 +788,17 @@ function App() {
 
             <div className="time-row">
               <div>
-                <label>Study Time</label>
+                <label>Task Focus Time</label>
                 <input
                   type="number"
                   min="1"
-                  value={studyTime}
-                  onChange={(event) =>
-                    updateStudyTime(Number(event.target.value))
-                  }
+                  value={taskTimerMinutes}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    if (value < 1) return;
+                    setTaskTimerMinutes(value);
+                  }}
+                  disabled={!selectedPlan}
                 />
               </div>
 
@@ -916,6 +937,52 @@ function App() {
                           </div>
                         )}
                       </div>
+
+                      <div className="task-timer-box">
+                        <div>
+                          <strong>Task Timer</strong>
+                          <p className="task-subject">
+                            Focus time: {item.timerMinutes || studyTime} minutes
+                          </p>
+                        </div>
+
+                        {activeTaskId === item.id ? (
+                          <>
+                            <div className="small-timer">{formattedTime}</div>
+
+                            <div className="timer-buttons">
+                              <button onClick={() => setIsRunning(true)}>
+                                Start
+                              </button>
+
+                              <button
+                                className="secondary-btn"
+                                onClick={pauseTimer}
+                              >
+                                Pause
+                              </button>
+
+                              <button
+                                className="delete-btn"
+                                onClick={resetTimer}
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              startTaskTimer(
+                                item.id,
+                                item.timerMinutes || studyTime
+                              )
+                            }
+                          >
+                            Start Timer
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <button
@@ -990,7 +1057,17 @@ function App() {
             <div className="timer">{formattedTime}</div>
 
             <div className="timer-buttons">
-              <button onClick={startTimer}>Start</button>
+              <button
+                onClick={() => {
+                  if (activeTaskId) {
+                    setIsRunning(true);
+                  } else {
+                    showMessage("Start a timer from a task first.", "error");
+                  }
+                }}
+              >
+                Start
+              </button>
 
               <button className="secondary-btn" onClick={pauseTimer}>
                 Pause
@@ -1002,8 +1079,8 @@ function App() {
             </div>
 
             <p className="hint">
-              Study for {studyTime} minutes, then take a {breakTime}-minute
-              break.
+              Start a timer from a specific task. Break time is {breakTime}{" "}
+              minutes.
             </p>
           </div>
         </section>
