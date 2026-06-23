@@ -555,3 +555,36 @@ button:disabled:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.task-timer-box {
+  margin-top: 14px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.task-timer-box strong {
+  color: #92400e;
+}
+
+.small-timer {
+  font-size: 30px;
+  font-weight: bold;
+  color: #4f46e5;
+  margin: 10px 0;
+}
+
+.task-timer-box .timer-buttons {
+  margin-top: 10px;
+}
+
+.task-timer-box button {
+  padding: 8px 12px;
+}
+
+@media (max-width: 750px) {
+  .task-timer-box .timer-buttons {
+    flex-direction: column;
+  }
+}
