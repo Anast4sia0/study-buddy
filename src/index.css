@@ -432,3 +432,31 @@ label {
 .task-subject {
   line-height: 1.4;
 }
+
+.selected-plan {
+  border: 1px solid #4f46e5;
+  background: #eef2ff !important;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.small-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: normal;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  transform: none;
+}
