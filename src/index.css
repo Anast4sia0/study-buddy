@@ -588,3 +588,144 @@ button:disabled:hover {
     flex-direction: column;
   }
 }
+
+
+.profile-card {
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  font-size: 34px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 14px;
+}
+
+.profile-info {
+  text-align: left;
+  background: #f9fafb;
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 14px;
+}
+
+.profile-info p {
+  margin: 8px 0;
+}
+
+.settings-card select,
+.settings-card input {
+  margin-bottom: 14px;
+}
+
+.danger-zone {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+
+.danger-zone h3 {
+  margin-top: 0;
+  color: #be123c;
+}
+
+/* DARK MODE */
+
+.app.dark {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+.app.dark body {
+  background: #0f172a;
+}
+
+.app.dark .dashboard {
+  background: #0f172a;
+}
+
+.app.dark .header h1,
+.app.dark .card h2,
+.app.dark .card h3 {
+  color: #e5e7eb;
+}
+
+.app.dark .header p,
+.app.dark .muted,
+.app.dark .task-subject,
+.app.dark .small-text {
+  color: #cbd5e1;
+}
+
+.app.dark .card,
+.app.dark .summary-card {
+  background: #1e293b;
+  color: #e5e7eb;
+}
+
+.app.dark input,
+.app.dark select {
+  background: #0f172a;
+  color: white;
+  border-color: #334155;
+}
+
+.app.dark .empty,
+.app.dark .profile-info {
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.app.dark .task-list li {
+  background: #111827;
+}
+
+.app.dark .selected-plan {
+  background: #312e81 !important;
+  border-color: #818cf8;
+}
+
+.app.dark .subtask-box {
+  background: #312e81;
+}
+
+.app.dark .subtask {
+  background: #0f172a;
+}
+
+.app.dark .task-timer-box {
+  background: #451a03;
+  border-color: #92400e;
+}
+
+.app.dark .task-timer-box strong {
+  color: #fde68a;
+}
+
+.app.dark .danger-zone {
+  background: #450a0a;
+  border-color: #991b1b;
+}
+
+.app.dark .danger-zone h3 {
+  color: #fecaca;
+}
+
+.app.dark .secondary-btn {
+  background: #0f172a;
+  color: #c7d2fe;
+  border-color: #818cf8;
+}
+
+.app.dark .secondary-btn:hover {
+  background: #1e1b4b;
+}
