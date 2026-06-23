@@ -33,6 +33,8 @@ function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState(null);
 
+  const [theme, setTheme] = useState("light");
+
   function showMessage(text, type = "info") {
     setMessage(text);
     setMessageType(type);
@@ -146,6 +148,10 @@ function App() {
       JSON.parse(localStorage.getItem(`studyBuddyPlans_${foundUser.email}`)) ||
       [];
 
+    const savedSettings = JSON.parse(
+      localStorage.getItem(`studyBuddySettings_${foundUser.email}`)
+    );
+
     localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(foundUser));
 
     setCurrentUser(foundUser);
@@ -155,6 +161,14 @@ function App() {
 
     if (savedPlans.length > 0) {
       setSubject(savedPlans[0].title);
+    }
+
+    if (savedSettings) {
+      setTheme(savedSettings.theme || "light");
+      setStudyTime(savedSettings.studyTime || 25);
+      setBreakTime(savedSettings.breakTime || 5);
+      setTaskTimerMinutes(savedSettings.studyTime || 25);
+      setSecondsLeft((savedSettings.studyTime || 25) * 60);
     }
 
     showMessage("Login successful.", "success");
@@ -177,6 +191,19 @@ function App() {
     showMessage("Logged out successfully.", "info");
   }
 
+  function saveSettings(updatedTheme, updatedStudyTime, updatedBreakTime) {
+    if (!currentUser) return;
+
+    localStorage.setItem(
+      `studyBuddySettings_${currentUser.email}`,
+      JSON.stringify({
+        theme: updatedTheme,
+        studyTime: updatedStudyTime,
+        breakTime: updatedBreakTime,
+      })
+    );
+  }
+
   function savePlans(updatedPlans) {
     setPlans(updatedPlans);
 
@@ -186,6 +213,21 @@ function App() {
         JSON.stringify(updatedPlans)
       );
     }
+  }
+
+  function resetAllData() {
+    savePlans([]);
+    setSelectedPlanId(null);
+    setSubject("");
+    setTask("");
+    setPriority("Medium");
+    setActiveSubtaskTaskId(null);
+    setSubtaskText("");
+    setActiveTaskId(null);
+    setIsRunning(false);
+    setSecondsLeft(studyTime * 60);
+
+    showMessage("All study data was reset.", "info");
   }
 
   function createPlan() {
@@ -492,12 +534,24 @@ function App() {
         JSON.parse(localStorage.getItem(`studyBuddyPlans_${savedUser.email}`)) ||
         [];
 
+      const savedSettings = JSON.parse(
+        localStorage.getItem(`studyBuddySettings_${savedUser.email}`)
+      );
+
       setCurrentUser(savedUser);
       setPlans(savedPlans);
       setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
 
       if (savedPlans.length > 0) {
         setSubject(savedPlans[0].title);
+      }
+
+      if (savedSettings) {
+        setTheme(savedSettings.theme || "light");
+        setStudyTime(savedSettings.studyTime || 25);
+        setBreakTime(savedSettings.breakTime || 5);
+        setTaskTimerMinutes(savedSettings.studyTime || 25);
+        setSecondsLeft((savedSettings.studyTime || 25) * 60);
       }
     }
   }, []);
@@ -631,7 +685,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${theme}`}>
       <main className="dashboard">
         <header className="header">
           <div>
@@ -1041,47 +1095,98 @@ function App() {
             )}
           </div>
 
-          <div className="card">
-            <h2>Focus Timer</h2>
+          <div className="card profile-card">
+            <h2>Profile</h2>
 
-            <p>
-              <strong>Current Plan:</strong>{" "}
-              {selectedPlan ? selectedPlan.title : "Not selected yet"}
-            </p>
-
-            <p>
-              <strong>Subject:</strong>{" "}
-              {subject.trim() === "" ? "Not selected yet" : subject}
-            </p>
-
-            <div className="timer">{formattedTime}</div>
-
-            <div className="timer-buttons">
-              <button
-                onClick={() => {
-                  if (activeTaskId) {
-                    setIsRunning(true);
-                  } else {
-                    showMessage("Start a timer from a task first.", "error");
-                  }
-                }}
-              >
-                Start
-              </button>
-
-              <button className="secondary-btn" onClick={pauseTimer}>
-                Pause
-              </button>
-
-              <button className="delete-btn" onClick={resetTimer}>
-                Reset
-              </button>
+            <div className="profile-avatar">
+              {currentUser.name.charAt(0).toUpperCase()}
             </div>
 
-            <p className="hint">
-              Start a timer from a specific task. Break time is {breakTime}{" "}
-              minutes.
-            </p>
+            <h3>{currentUser.name}</h3>
+            <p className="muted">{currentUser.email}</p>
+
+            <div className="profile-info">
+              <p>
+                <strong>Joined:</strong> {currentUser.joinedAt || "Recently"}
+              </p>
+
+              <p>
+                <strong>Study Plans:</strong> {plans.length}
+              </p>
+
+              <p>
+                <strong>Total Tasks:</strong> {allTasks.length}
+              </p>
+
+              <p>
+                <strong>Completed Items:</strong>{" "}
+                {totalCompletedTasks + totalCompletedSubtasks}
+              </p>
+            </div>
+          </div>
+
+          <div className="card settings-card">
+            <h2>Settings</h2>
+
+            <label>Theme</label>
+            <select
+              value={theme}
+              onChange={(event) => {
+                setTheme(event.target.value);
+                saveSettings(event.target.value, studyTime, breakTime);
+              }}
+            >
+              <option value="light">Light Mode</option>
+              <option value="dark">Dark Mode</option>
+            </select>
+
+            <label>Default Study Time</label>
+            <input
+              type="number"
+              min="1"
+              value={studyTime}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+
+                if (value < 1) return;
+
+                setStudyTime(value);
+                setTaskTimerMinutes(value);
+
+                if (!isRunning) {
+                  setSecondsLeft(value * 60);
+                }
+
+                saveSettings(theme, value, breakTime);
+              }}
+            />
+
+            <label>Default Break Time</label>
+            <input
+              type="number"
+              min="1"
+              value={breakTime}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+
+                if (value < 1) return;
+
+                setBreakTime(value);
+                saveSettings(theme, studyTime, value);
+              }}
+            />
+
+            <div className="danger-zone">
+              <h3>Reset Data</h3>
+              <p className="muted">
+                This removes all study plans, tasks, and subtasks for this
+                account.
+              </p>
+
+              <button className="delete-btn" onClick={resetAllData}>
+                Reset All Study Data
+              </button>
+            </div>
           </div>
         </section>
       </main>
