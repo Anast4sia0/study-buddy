@@ -364,3 +364,71 @@ label {
     font-size: 42px;
   }
 }
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  padding: 20px;
+}
+
+.auth-card {
+  background: white;
+  padding: 38px;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.25);
+}
+
+.auth-card h1 {
+  color: #4f46e5;
+  margin-bottom: 10px;
+}
+
+.muted {
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.password-rules {
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: -5px;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.full-btn {
+  width: 100%;
+}
+
+.link-btn {
+  background: transparent;
+  color: #4f46e5;
+  margin-top: 10px;
+  padding: 8px;
+}
+
+.link-btn:hover {
+  background: #eef2ff;
+  transform: none;
+}
+
+.task-list li span {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.task-list li span:hover {
+  color: #4f46e5;
+}
+
+.task-subject {
+  line-height: 1.4;
+}
