@@ -141,7 +141,7 @@ function App() {
     }
 
     const savedPlans =
-      JSON.parse(localStorage.getItem(studyBuddyPlans_${foundUser.email})) ||
+      JSON.parse(localStorage.getItem(`studyBuddyPlans_${foundUser.email}`)) ||
       [];
 
     localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(foundUser));
@@ -179,7 +179,7 @@ function App() {
 
     if (currentUser) {
       localStorage.setItem(
-        studyBuddyPlans_${currentUser.email},
+        `studyBuddyPlans_${currentUser.email}`,
         JSON.stringify(updatedPlans)
       );
     }
@@ -471,7 +471,7 @@ function App() {
 
     if (savedUser) {
       const savedPlans =
-        JSON.parse(localStorage.getItem(studyBuddyPlans_${savedUser.email})) ||
+        JSON.parse(localStorage.getItem(`studyBuddyPlans_${savedUser.email}`)) ||
         [];
 
       setCurrentUser(savedUser);
@@ -523,7 +523,7 @@ function App() {
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const formattedTime = ${minutes}:${seconds < 10 ? 0${seconds}` : seconds}`;
+  const formattedTime = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 
   if (!currentUser) {
     return (
@@ -952,7 +952,7 @@ function App() {
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
-                    style={{ width: ${progress}% }}
+                    style={{ width: `${progress}%` }}
                   ></div>
                 </div>
 
