@@ -10,14 +10,15 @@ function App() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+
+  const [planTitle, setPlanTitle] = useState("");
+  const [planDescription, setPlanDescription] = useState("");
+
   const [subject, setSubject] = useState("");
   const [task, setTask] = useState("");
   const [priority, setPriority] = useState("Medium");
-  const [tasks, setTasks] = useState([]);
-
-  const [plans, setPlans] = useState([]);
-  const [planTitle, setPlanTitle] = useState("");
-  const [planDescription, setPlanDescription] = useState("");
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -106,6 +107,7 @@ function App() {
 
     setCurrentUser(newUser);
     setPlans([]);
+    setSelectedPlanId(null);
     clearAuthForm();
 
     showMessage("Registration successful.", "success");
@@ -143,6 +145,7 @@ function App() {
 
     setCurrentUser(foundUser);
     setPlans(savedPlans);
+    setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
     clearAuthForm();
 
     showMessage("Login successful.", "success");
@@ -151,7 +154,7 @@ function App() {
   function logoutUser() {
     setCurrentUser(null);
     setPlans([]);
-    setTasks([]);
+    setSelectedPlanId(null);
     setSubject("");
     setTask("");
     setPriority("Medium");
@@ -185,28 +188,51 @@ function App() {
       description:
         planDescription.trim() || "No description was added for this plan.",
       createdAt: new Date().toLocaleDateString(),
+      tasks: [],
     };
 
     const updatedPlans = [...plans, newPlan];
 
     savePlans(updatedPlans);
 
+    setSelectedPlanId(newPlan.id);
+    setSubject(newPlan.title);
     setPlanTitle("");
     setPlanDescription("");
 
     showMessage("Study plan created successfully.", "success");
   }
 
+  function openPlan(id) {
+    const selectedPlan = plans.find((plan) => plan.id === id);
+
+    setSelectedPlanId(id);
+
+    if (selectedPlan) {
+      setSubject(selectedPlan.title);
+    }
+
+    showMessage("Study plan opened.", "info");
+  }
+
   function deletePlan(id) {
     const updatedPlans = plans.filter((plan) => plan.id !== id);
+
     savePlans(updatedPlans);
+
+    if (selectedPlanId === id) {
+      const nextPlan = updatedPlans.length > 0 ? updatedPlans[0] : null;
+
+      setSelectedPlanId(nextPlan ? nextPlan.id : null);
+      setSubject(nextPlan ? nextPlan.title : "");
+    }
 
     showMessage("Study plan deleted.", "info");
   }
 
   function addTask() {
-    if (subject.trim() === "") {
-      showMessage("Please enter a subject first.", "error");
+    if (!selectedPlanId) {
+      showMessage("Please open a study plan first.", "error");
       return;
     }
 
@@ -224,34 +250,62 @@ function App() {
       createdAt: new Date().toLocaleDateString(),
     };
 
-    setTasks([...tasks, newTask]);
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? { ...plan, tasks: [...plan.tasks, newTask] }
+        : plan
+    );
+
+    savePlans(updatedPlans);
+
     setTask("");
     setPriority("Medium");
 
-    showMessage("Task added successfully.", "success");
+    showMessage("Task added to selected plan.", "success");
   }
 
   function toggleTask(id) {
-    const updatedTasks = tasks.map((item) =>
-      item.id === id ? { ...item, completed: !item.completed } : item
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? {
+            ...plan,
+            tasks: plan.tasks.map((item) =>
+              item.id === id ? { ...item, completed: !item.completed } : item
+            ),
+          }
+        : plan
     );
 
-    setTasks(updatedTasks);
+    savePlans(updatedPlans);
   }
 
   function deleteTask(id) {
-    const updatedTasks = tasks.filter((item) => item.id !== id);
-    setTasks(updatedTasks);
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? {
+            ...plan,
+            tasks: plan.tasks.filter((item) => item.id !== id),
+          }
+        : plan
+    );
+
+    savePlans(updatedPlans);
 
     showMessage("Task deleted.", "info");
   }
 
   function clearAllTasks() {
-    setTasks([]);
+    if (!selectedPlanId) return;
+
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId ? { ...plan, tasks: [] } : plan
+    );
+
+    savePlans(updatedPlans);
     setIsRunning(false);
     setSecondsLeft(studyTime * 60);
 
-    showMessage("All tasks were cleared.", "info");
+    showMessage("All tasks in this plan were cleared.", "info");
   }
 
   function updateStudyTime(value) {
@@ -270,7 +324,12 @@ function App() {
   }
 
   function startTimer() {
-    if (tasks.length === 0) {
+    if (!selectedPlanId) {
+      showMessage("Please open a study plan before starting.", "error");
+      return;
+    }
+
+    if (selectedPlanTasks.length === 0) {
       showMessage("Please add at least one task before starting.", "error");
       return;
     }
@@ -318,15 +377,31 @@ function App() {
 
       setCurrentUser(savedUser);
       setPlans(savedPlans);
+      setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
+
+      if (savedPlans.length > 0) {
+        setSubject(savedPlans[0].title);
+      }
     }
   }, []);
 
-  const completedTasks = tasks.filter((item) => item.completed).length;
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+  const selectedPlanTasks = selectedPlan ? selectedPlan.tasks : [];
+
+  const allTasks = plans.flatMap((plan) => plan.tasks);
+
+  const completedTasks = selectedPlanTasks.filter(
+    (item) => item.completed
+  ).length;
+
+  const totalCompletedTasks = allTasks.filter((item) => item.completed).length;
 
   const progress =
-    tasks.length === 0 ? 0 : Math.round((completedTasks / tasks.length) * 100);
+    selectedPlanTasks.length === 0
+      ? 0
+      : Math.round((completedTasks / selectedPlanTasks.length) * 100);
 
-  const highPriorityTasks = tasks.filter(
+  const highPriorityTasks = allTasks.filter(
     (item) => item.priority === "High" && !item.completed
   ).length;
 
@@ -443,12 +518,12 @@ function App() {
           </div>
 
           <div className="summary-card">
-            <h3>{tasks.length}</h3>
+            <h3>{allTasks.length}</h3>
             <p>Total Tasks</p>
           </div>
 
           <div className="summary-card">
-            <h3>{completedTasks}</h3>
+            <h3>{totalCompletedTasks}</h3>
             <p>Completed</p>
           </div>
 
@@ -491,19 +566,41 @@ function App() {
             ) : (
               <ul className="task-list">
                 {plans.map((plan) => (
-                  <li key={plan.id}>
+                  <li
+                    key={plan.id}
+                    className={
+                      selectedPlanId === plan.id ? "selected-plan" : ""
+                    }
+                  >
                     <div>
-                      <span>{plan.title}</span>
+                      <span onClick={() => openPlan(plan.id)}>
+                        {selectedPlanId === plan.id ? "✓ " : ""}
+                        {plan.title}
+                      </span>
+
                       <p className="task-subject">{plan.description}</p>
-                      <p className="task-subject">Created {plan.createdAt}</p>
+                      <p className="task-subject">
+                        {plan.tasks.length}{" "}
+                        {plan.tasks.length === 1 ? "task" : "tasks"} • Created{" "}
+                        {plan.createdAt}
+                      </p>
                     </div>
 
-                    <button
-                      className="delete-btn"
-                      onClick={() => deletePlan(plan.id)}
-                    >
-                      Delete
-                    </button>
+                    <div className="plan-actions">
+                      <button
+                        className="small-btn"
+                        onClick={() => openPlan(plan.id)}
+                      >
+                        Open
+                      </button>
+
+                      <button
+                        className="delete-btn"
+                        onClick={() => deletePlan(plan.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -511,7 +608,20 @@ function App() {
           </div>
 
           <div className="card">
-            <h2>Add Task</h2>
+            <h2>
+              Add Task{" "}
+              {selectedPlan ? (
+                <span className="small-text">for {selectedPlan.title}</span>
+              ) : (
+                ""
+              )}
+            </h2>
+
+            {!selectedPlan && (
+              <p className="empty">
+                Create or open a study plan before adding tasks.
+              </p>
+            )}
 
             <label>Subject</label>
             <input
@@ -519,6 +629,7 @@ function App() {
               placeholder="Example: Software Engineering"
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
+              disabled={!selectedPlan}
             />
 
             <label>Task</label>
@@ -527,12 +638,14 @@ function App() {
               placeholder="Example: Finish final project"
               value={task}
               onChange={(event) => setTask(event.target.value)}
+              disabled={!selectedPlan}
             />
 
             <label>Priority</label>
             <select
               value={priority}
               onChange={(event) => setPriority(event.target.value)}
+              disabled={!selectedPlan}
             >
               <option>Low</option>
               <option>Medium</option>
@@ -565,14 +678,23 @@ function App() {
               </div>
             </div>
 
-            <button onClick={addTask}>Add Task</button>
+            <button onClick={addTask} disabled={!selectedPlan}>
+              Add Task
+            </button>
           </div>
 
           <div className="card">
             <div className="card-title-row">
-              <h2>Task Checklist</h2>
+              <h2>
+                Task Checklist{" "}
+                {selectedPlan ? (
+                  <span className="small-text">for {selectedPlan.title}</span>
+                ) : (
+                  ""
+                )}
+              </h2>
 
-              {tasks.length > 0 && (
+              {selectedPlanTasks.length > 0 && (
                 <button className="small-btn" onClick={clearAllTasks}>
                   Clear All
                 </button>
@@ -580,14 +702,16 @@ function App() {
             </div>
 
             <p className="hint small-hint">
-              Click on a task to mark it as completed.
+              Open a study plan, then click a task to mark it as completed.
             </p>
 
-            {tasks.length === 0 ? (
-              <p className="empty">No tasks added yet.</p>
+            {!selectedPlan ? (
+              <p className="empty">No study plan selected.</p>
+            ) : selectedPlanTasks.length === 0 ? (
+              <p className="empty">No tasks added in this plan yet.</p>
             ) : (
               <ul className="task-list">
-                {tasks.map((item) => (
+                {selectedPlanTasks.map((item) => (
                   <li key={item.id}>
                     <div>
                       <span
@@ -618,32 +742,55 @@ function App() {
           </div>
 
           <div className="card">
-            <h2>Progress</h2>
+            <h2>
+              Progress{" "}
+              {selectedPlan ? (
+                <span className="small-text">for {selectedPlan.title}</span>
+              ) : (
+                ""
+              )}
+            </h2>
 
-            <p>
-              {completedTasks} out of {tasks.length} tasks completed
-            </p>
+            {!selectedPlan ? (
+              <p className="empty">Open a study plan to track progress.</p>
+            ) : (
+              <>
+                <p>
+                  {completedTasks} out of {selectedPlanTasks.length} tasks
+                  completed
+                </p>
 
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
 
-            <h3>{progress}%</h3>
+                <h3>{progress}%</h3>
 
-            {tasks.length === 0 && (
-              <p className="empty">Add tasks to start tracking progress.</p>
-            )}
+                {selectedPlanTasks.length === 0 && (
+                  <p className="empty">
+                    Add tasks to this plan to start tracking progress.
+                  </p>
+                )}
 
-            {tasks.length > 0 && progress === 100 && (
-              <p className="success">Great job! All tasks are completed.</p>
+                {selectedPlanTasks.length > 0 && progress === 100 && (
+                  <p className="success">
+                    Great job! All tasks in this plan are completed.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
           <div className="card">
             <h2>Focus Timer</h2>
+
+            <p>
+              <strong>Current Plan:</strong>{" "}
+              {selectedPlan ? selectedPlan.title : "Not selected yet"}
+            </p>
 
             <p>
               <strong>Subject:</strong>{" "}
