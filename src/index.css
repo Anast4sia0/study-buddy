@@ -460,3 +460,98 @@ select:disabled {
 button:disabled:hover {
   transform: none;
 }
+
+/* STEP 4: SUBTASK STYLING */
+
+.task-with-subtasks {
+  align-items: flex-start;
+}
+
+.task-main-content {
+  width: 100%;
+}
+
+.subtask-box {
+  margin-top: 12px;
+  background: #eef2ff;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.subtask-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.subtask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subtask {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.subtask span {
+  cursor: pointer;
+}
+
+.subtask span:hover {
+  color: #4f46e5;
+}
+
+.subtask.completed span {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.subtask-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.subtask-input-row input {
+  margin: 0;
+}
+
+.mini-delete {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 4px 9px;
+  border-radius: 8px;
+}
+
+.mini-delete:hover {
+  background: #fecaca;
+  transform: none;
+}
+
+.small-empty {
+  font-size: 13px;
+  padding: 8px;
+  margin: 0;
+}
+
+@media (max-width: 750px) {
+  .subtask-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .subtask-input-row {
+    grid-template-columns: 1fr;
+  }
+}
