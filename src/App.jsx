@@ -20,6 +20,9 @@ function App() {
   const [task, setTask] = useState("");
   const [priority, setPriority] = useState("Medium");
 
+  const [activeSubtaskTaskId, setActiveSubtaskTaskId] = useState(null);
+  const [subtaskText, setSubtaskText] = useState("");
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
@@ -138,7 +141,7 @@ function App() {
     }
 
     const savedPlans =
-      JSON.parse(localStorage.getItem(`studyBuddyPlans_${foundUser.email}`)) ||
+      JSON.parse(localStorage.getItem(studyBuddyPlans_${foundUser.email})) ||
       [];
 
     localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(foundUser));
@@ -147,6 +150,10 @@ function App() {
     setPlans(savedPlans);
     setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
     clearAuthForm();
+
+    if (savedPlans.length > 0) {
+      setSubject(savedPlans[0].title);
+    }
 
     showMessage("Login successful.", "success");
   }
@@ -158,6 +165,8 @@ function App() {
     setSubject("");
     setTask("");
     setPriority("Medium");
+    setActiveSubtaskTaskId(null);
+    setSubtaskText("");
     setIsRunning(false);
     setSecondsLeft(studyTime * 60);
     localStorage.removeItem("studyBuddyCurrentUser");
@@ -170,7 +179,7 @@ function App() {
 
     if (currentUser) {
       localStorage.setItem(
-        `studyBuddyPlans_${currentUser.email}`,
+        studyBuddyPlans_${currentUser.email},
         JSON.stringify(updatedPlans)
       );
     }
@@ -207,6 +216,8 @@ function App() {
     const selectedPlan = plans.find((plan) => plan.id === id);
 
     setSelectedPlanId(id);
+    setActiveSubtaskTaskId(null);
+    setSubtaskText("");
 
     if (selectedPlan) {
       setSubject(selectedPlan.title);
@@ -247,6 +258,7 @@ function App() {
       text: task.trim(),
       priority,
       completed: false,
+      subtasks: [],
       createdAt: new Date().toLocaleDateString(),
     };
 
@@ -291,7 +303,92 @@ function App() {
 
     savePlans(updatedPlans);
 
+    if (activeSubtaskTaskId === id) {
+      setActiveSubtaskTaskId(null);
+      setSubtaskText("");
+    }
+
     showMessage("Task deleted.", "info");
+  }
+
+  function addSubtask(taskId) {
+    if (subtaskText.trim() === "") {
+      showMessage("Please enter a subtask.", "error");
+      return;
+    }
+
+    const newSubtask = {
+      id: Date.now(),
+      text: subtaskText.trim(),
+      completed: false,
+    };
+
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? {
+            ...plan,
+            tasks: plan.tasks.map((item) =>
+              item.id === taskId
+                ? { ...item, subtasks: [...item.subtasks, newSubtask] }
+                : item
+            ),
+          }
+        : plan
+    );
+
+    savePlans(updatedPlans);
+
+    setSubtaskText("");
+    setActiveSubtaskTaskId(null);
+
+    showMessage("Subtask added.", "success");
+  }
+
+  function toggleSubtask(taskId, subtaskId) {
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? {
+            ...plan,
+            tasks: plan.tasks.map((item) =>
+              item.id === taskId
+                ? {
+                    ...item,
+                    subtasks: item.subtasks.map((subtask) =>
+                      subtask.id === subtaskId
+                        ? { ...subtask, completed: !subtask.completed }
+                        : subtask
+                    ),
+                  }
+                : item
+            ),
+          }
+        : plan
+    );
+
+    savePlans(updatedPlans);
+  }
+
+  function deleteSubtask(taskId, subtaskId) {
+    const updatedPlans = plans.map((plan) =>
+      plan.id === selectedPlanId
+        ? {
+            ...plan,
+            tasks: plan.tasks.map((item) =>
+              item.id === taskId
+                ? {
+                    ...item,
+                    subtasks: item.subtasks.filter(
+                      (subtask) => subtask.id !== subtaskId
+                    ),
+                  }
+                : item
+            ),
+          }
+        : plan
+    );
+
+    savePlans(updatedPlans);
+    showMessage("Subtask deleted.", "info");
   }
 
   function clearAllTasks() {
@@ -304,6 +401,8 @@ function App() {
     savePlans(updatedPlans);
     setIsRunning(false);
     setSecondsLeft(studyTime * 60);
+    setActiveSubtaskTaskId(null);
+    setSubtaskText("");
 
     showMessage("All tasks in this plan were cleared.", "info");
   }
@@ -372,7 +471,7 @@ function App() {
 
     if (savedUser) {
       const savedPlans =
-        JSON.parse(localStorage.getItem(`studyBuddyPlans_${savedUser.email}`)) ||
+        JSON.parse(localStorage.getItem(studyBuddyPlans_${savedUser.email})) ||
         [];
 
       setCurrentUser(savedUser);
@@ -388,18 +487,35 @@ function App() {
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
   const selectedPlanTasks = selectedPlan ? selectedPlan.tasks : [];
 
+  const selectedPlanSubtasks = selectedPlanTasks.flatMap(
+    (item) => item.subtasks
+  );
+
   const allTasks = plans.flatMap((plan) => plan.tasks);
+  const allSubtasks = allTasks.flatMap((item) => item.subtasks);
 
   const completedTasks = selectedPlanTasks.filter(
     (item) => item.completed
   ).length;
 
+  const completedSubtasks = selectedPlanSubtasks.filter(
+    (subtask) => subtask.completed
+  ).length;
+
+  const selectedTotalItems =
+    selectedPlanTasks.length + selectedPlanSubtasks.length;
+
+  const selectedCompletedItems = completedTasks + completedSubtasks;
+
   const totalCompletedTasks = allTasks.filter((item) => item.completed).length;
+  const totalCompletedSubtasks = allSubtasks.filter(
+    (subtask) => subtask.completed
+  ).length;
 
   const progress =
-    selectedPlanTasks.length === 0
+    selectedTotalItems === 0
       ? 0
-      : Math.round((completedTasks / selectedPlanTasks.length) * 100);
+      : Math.round((selectedCompletedItems / selectedTotalItems) * 100);
 
   const highPriorityTasks = allTasks.filter(
     (item) => item.priority === "High" && !item.completed
@@ -407,7 +523,7 @@ function App() {
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const formattedTime = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+  const formattedTime = ${minutes}:${seconds < 10 ? 0${seconds}` : seconds}`;
 
   if (!currentUser) {
     return (
@@ -503,7 +619,7 @@ function App() {
           <div>
             <p className="badge">Study Session Dashboard</p>
             <h1>Hello, {currentUser.name} 👋</h1>
-            <p>Organize your plans, tasks, focus time, and progress.</p>
+            <p>Organize your plans, tasks, subtasks, focus time, and progress.</p>
           </div>
 
           <button className="delete-btn" onClick={logoutUser}>
@@ -523,8 +639,8 @@ function App() {
           </div>
 
           <div className="summary-card">
-            <h3>{totalCompletedTasks}</h3>
-            <p>Completed</p>
+            <h3>{totalCompletedTasks + totalCompletedSubtasks}</h3>
+            <p>Completed Items</p>
           </div>
 
           <div className="summary-card warning">
@@ -702,7 +818,8 @@ function App() {
             </div>
 
             <p className="hint small-hint">
-              Open a study plan, then click a task to mark it as completed.
+              Open a study plan, then click a task or subtask to mark it as
+              completed.
             </p>
 
             {!selectedPlan ? (
@@ -712,8 +829,8 @@ function App() {
             ) : (
               <ul className="task-list">
                 {selectedPlanTasks.map((item) => (
-                  <li key={item.id}>
-                    <div>
+                  <li key={item.id} className="task-with-subtasks">
+                    <div className="task-main-content">
                       <span
                         className={item.completed ? "completed" : ""}
                         onClick={() => toggleTask(item.id)}
@@ -727,6 +844,78 @@ function App() {
                       <p className={`priority ${item.priority.toLowerCase()}`}>
                         {item.priority} priority
                       </p>
+
+                      <div className="subtask-box">
+                        <div className="subtask-header">
+                          <strong>Subtasks</strong>
+
+                          <button
+                            className="small-btn"
+                            onClick={() => {
+                              setActiveSubtaskTaskId(
+                                activeSubtaskTaskId === item.id ? null : item.id
+                              );
+                              setSubtaskText("");
+                            }}
+                          >
+                            {activeSubtaskTaskId === item.id
+                              ? "Close"
+                              : "+ Add Subtask"}
+                          </button>
+                        </div>
+
+                        {item.subtasks.length === 0 ? (
+                          <p className="empty small-empty">No subtasks yet.</p>
+                        ) : (
+                          <div className="subtask-list">
+                            {item.subtasks.map((subtask) => (
+                              <div
+                                key={subtask.id}
+                                className={
+                                  subtask.completed
+                                    ? "subtask completed"
+                                    : "subtask"
+                                }
+                              >
+                                <span
+                                  onClick={() =>
+                                    toggleSubtask(item.id, subtask.id)
+                                  }
+                                >
+                                  {subtask.completed ? "✓" : "○"}{" "}
+                                  {subtask.text}
+                                </span>
+
+                                <button
+                                  className="mini-delete"
+                                  onClick={() =>
+                                    deleteSubtask(item.id, subtask.id)
+                                  }
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {activeSubtaskTaskId === item.id && (
+                          <div className="subtask-input-row">
+                            <input
+                              type="text"
+                              value={subtaskText}
+                              onChange={(event) =>
+                                setSubtaskText(event.target.value)
+                              }
+                              placeholder="Example: Write introduction"
+                            />
+
+                            <button onClick={() => addSubtask(item.id)}>
+                              Save
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <button
@@ -756,28 +945,29 @@ function App() {
             ) : (
               <>
                 <p>
-                  {completedTasks} out of {selectedPlanTasks.length} tasks
-                  completed
+                  {selectedCompletedItems} out of {selectedTotalItems} tasks and
+                  subtasks completed
                 </p>
 
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
-                    style={{ width: `${progress}%` }}
+                    style={{ width: ${progress}% }}
                   ></div>
                 </div>
 
                 <h3>{progress}%</h3>
 
-                {selectedPlanTasks.length === 0 && (
+                {selectedTotalItems === 0 && (
                   <p className="empty">
-                    Add tasks to this plan to start tracking progress.
+                    Add tasks and subtasks to this plan to start tracking
+                    progress.
                   </p>
                 )}
 
-                {selectedPlanTasks.length > 0 && progress === 100 && (
+                {selectedTotalItems > 0 && progress === 100 && (
                   <p className="success">
-                    Great job! All tasks in this plan are completed.
+                    Great job! Everything in this plan is completed.
                   </p>
                 )}
               </>
