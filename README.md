@@ -1,82 +1,75 @@
 # StudyBuddy
+A student productivity web application built with React, JavaScript and CSS.
+StudyBuddy helps students organize their study plans, manage tasks, track their progress and stay focused while studying using a built-in timer.
 
-## Overview
-StudyBuddy is a student productivity web application developed using React, JavaScript, CSS, and Local Storage.
 
-The application helps students organize their studies by creating study plans, managing tasks and subtasks, tracking progress, and using focus timers to improve productivity.
-
-## Features
+## features
 
 ### User Authentication
 User registration
 User login
 User logout
-Input validation
-Password validation
+Form validation
 
-### Study Plan Management
+### Study Plans
 Create study plans
-Open study plans
+View study plans
 Delete study plans
-Store plans in local storage
 
 ### Task Management
-Add tasks to study plans
-Set task priorities
+Add tasks
 Delete tasks
 Mark tasks as completed
+Set task priorities
 
-### Subtask Management
-Create subtasks
+### Subtasks
+Add subtasks
 Complete subtasks
 Delete subtasks
 
 ### Progress Tracking
-Progress percentage calculation
-Completed task tracking
-Dashboard statistics
+Track completed tasks
+Track completed subtasks
+View study progress
 
 ### Focus Timer
-Task-specific study timers
-Start, pause, and reset functionality
+Start the timer
+Pause the timer
+Reset the timer
 
-### User Features
-Profile section
-Settings section
-Theme preferences
+### User Settings
+Profile page
+Settings page
 Dark mode
+Save user preferences
 
-## technologies Used
+### data Storage
 
+Uses Local Storage
+Data remains available after refreshing the page
+
+
+## Technologies used
 React
 JavaScript
-CSS
 HTML
+CSS
 Local Storage
 Git
 GitHub
+Visual Studio Code
+
+
 
 ## Installation
 
+Clone the repository:
+
+```bash
+git clone <repository-url>
+```
+
 ```bash
 npm install
-npm run dev
+npm.cmd run dev
 
-## Team Members and Contributions
-
-### Anastasia Gelashvili
-- Participated in project planning and design
-- Worked on study plan functionality
-- Worked on task and subtask management
-- Contributed to testing and debugging
-- Contributed to user interface improvements
-
-### Nini Pkhakadze
-- Participated in project planning and design
-- Worked on authentication functionality
-- Contributed to timer and settings features
-- Assisted with testing and debugging
-- Contributed to user interface improvements
-
-### Collaboration
-The project was developed collaboratively. Most features were discussed, reviewed, and improved together. Team members regularly helped each other with implementation, debugging, and testing throughout the development process. The functionality was planned together. 
