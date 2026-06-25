@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./index.css";
 
 function App() {
+  //state variables
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
 
@@ -35,6 +36,7 @@ function App() {
 
   const [theme, setTheme] = useState("light");
 
+  //authentication
   function showMessage(text, type = "info") {
     setMessage(text);
     setMessageType(type);
@@ -191,6 +193,7 @@ function App() {
     showMessage("Logged out successfully.", "info");
   }
 
+  //local Storage
   function saveSettings(updatedTheme, updatedStudyTime, updatedBreakTime) {
     if (!currentUser) return;
 
@@ -215,6 +218,7 @@ function App() {
     }
   }
 
+  //study plan management
   function resetAllData() {
     savePlans([]);
     setSelectedPlanId(null);
@@ -292,6 +296,7 @@ function App() {
     showMessage("Study plan deleted.", "info");
   }
 
+  //task management
   function addTask() {
     if (!selectedPlanId) {
       showMessage("Please open a study plan first.", "error");
@@ -370,6 +375,7 @@ function App() {
     showMessage("Task deleted.", "info");
   }
 
+  //subtask management
   function addSubtask(taskId) {
     if (subtaskText.trim() === "") {
       showMessage("Please enter a subtask.", "error");
@@ -467,6 +473,8 @@ function App() {
     showMessage("All tasks in this plan were cleared.", "info");
   }
 
+  //timer Settings
+
   function updateStudyTime(value) {
     if (value < 1) return;
 
@@ -483,6 +491,7 @@ function App() {
     setBreakTime(value);
   }
 
+  //Focus Timer
   function startTaskTimer(taskId, timerMinutes) {
     setActiveTaskId(taskId);
     setSecondsLeft(timerMinutes * 60);
@@ -509,6 +518,7 @@ function App() {
     showMessage("Timer was reset.", "info");
   }
 
+  //react effects
   useEffect(() => {
     let timerId;
 
@@ -556,6 +566,7 @@ function App() {
     }
   }, []);
 
+  //statistics and Progress
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
   const selectedPlanTasks = selectedPlan ? selectedPlan.tasks : [];
 
@@ -597,6 +608,7 @@ function App() {
   const seconds = secondsLeft % 60;
   const formattedTime = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 
+    //main dashboard
   if (!currentUser) {
     return (
       <div className="auth-page">

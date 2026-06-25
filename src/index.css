@@ -544,7 +544,7 @@ button:disabled:hover {
   padding: 8px;
   margin: 0;
 }
-
+ 
 @media (max-width: 750px) {
   .subtask-header {
     flex-direction: column;
