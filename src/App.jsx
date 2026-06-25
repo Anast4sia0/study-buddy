@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./index.css";
-
+//state variables
 function App() {
-  //state variables
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
+  const [currentPage, setCurrentPage] = useState("home");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,25 +17,23 @@ function App() {
   const [planTitle, setPlanTitle] = useState("");
   const [planDescription, setPlanDescription] = useState("");
 
-  const [subject, setSubject] = useState("");
-  const [task, setTask] = useState("");
+  const [taskText, setTaskText] = useState("");
   const [priority, setPriority] = useState("Medium");
+  const [taskTimerMinutes, setTaskTimerMinutes] = useState(25);
 
-  const [activeSubtaskTaskId, setActiveSubtaskTaskId] = useState(null);
-  const [subtaskText, setSubtaskText] = useState("");
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [activeSubtaskForm, setActiveSubtaskForm] = useState(null);
+  const [subtaskInputs, setSubtaskInputs] = useState({});
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  const [studyTime, setStudyTime] = useState(25);
-  const [breakTime, setBreakTime] = useState(5);
-  const [taskTimerMinutes, setTaskTimerMinutes] = useState(25);
+  const [defaultStudyTime, setDefaultStudyTime] = useState(25);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState(null);
 
   const [theme, setTheme] = useState("light");
-
   //authentication
   function showMessage(text, type = "info") {
     setMessage(text);
@@ -58,13 +56,6 @@ function App() {
       /[a-z]/.test(value) &&
       /[0-9]/.test(value)
     );
-  }
-
-  function clearAuthForm() {
-    setName("");
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
   }
 
   function registerUser() {
@@ -92,10 +83,7 @@ function App() {
     }
 
     const users = JSON.parse(localStorage.getItem("studyBuddyUsers")) || [];
-
-    const userExists = users.find(
-      (user) => user.email.toLowerCase() === email.trim().toLowerCase()
-    );
+    const userExists = users.find((user) => user.email === email);
 
     if (userExists) {
       showMessage("User with this email already exists.", "error");
@@ -104,7 +92,7 @@ function App() {
 
     const newUser = {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: email.trim(),
       password,
       joinedAt: new Date().toLocaleDateString(),
     };
@@ -115,9 +103,12 @@ function App() {
     localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(newUser));
 
     setCurrentUser(newUser);
-    setPlans([]);
-    setSelectedPlanId(null);
-    clearAuthForm();
+    setCurrentPage("home");
+
+    setName("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
 
     showMessage("Registration successful.", "success");
   }
@@ -136,9 +127,7 @@ function App() {
     const users = JSON.parse(localStorage.getItem("studyBuddyUsers")) || [];
 
     const foundUser = users.find(
-      (user) =>
-        user.email.toLowerCase() === email.trim().toLowerCase() &&
-        user.password === password
+      (user) => user.email === email && user.password === password
     );
 
     if (!foundUser) {
@@ -154,24 +143,23 @@ function App() {
       localStorage.getItem(`studyBuddySettings_${foundUser.email}`)
     );
 
-    localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(foundUser));
-
     setCurrentUser(foundUser);
     setPlans(savedPlans);
     setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
-    clearAuthForm();
-
-    if (savedPlans.length > 0) {
-      setSubject(savedPlans[0].title);
-    }
+    setCurrentPage("home");
 
     if (savedSettings) {
       setTheme(savedSettings.theme || "light");
-      setStudyTime(savedSettings.studyTime || 25);
-      setBreakTime(savedSettings.breakTime || 5);
-      setTaskTimerMinutes(savedSettings.studyTime || 25);
-      setSecondsLeft((savedSettings.studyTime || 25) * 60);
+      setDefaultStudyTime(savedSettings.defaultStudyTime || 25);
+      setTaskTimerMinutes(savedSettings.defaultStudyTime || 25);
+      setSecondsLeft((savedSettings.defaultStudyTime || 25) * 60);
     }
+
+    localStorage.setItem("studyBuddyCurrentUser", JSON.stringify(foundUser));
+
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
 
     showMessage("Login successful.", "success");
   }
@@ -180,31 +168,10 @@ function App() {
     setCurrentUser(null);
     setPlans([]);
     setSelectedPlanId(null);
-    setSubject("");
-    setTask("");
-    setPriority("Medium");
-    setActiveSubtaskTaskId(null);
-    setSubtaskText("");
-    setActiveTaskId(null);
+    setCurrentPage("home");
     setIsRunning(false);
-    setSecondsLeft(studyTime * 60);
+    setActiveTaskId(null);
     localStorage.removeItem("studyBuddyCurrentUser");
-
-    showMessage("Logged out successfully.", "info");
-  }
-
-  //local Storage
-  function saveSettings(updatedTheme, updatedStudyTime, updatedBreakTime) {
-    if (!currentUser) return;
-
-    localStorage.setItem(
-      `studyBuddySettings_${currentUser.email}`,
-      JSON.stringify({
-        theme: updatedTheme,
-        studyTime: updatedStudyTime,
-        breakTime: updatedBreakTime,
-      })
-    );
   }
 
   function savePlans(updatedPlans) {
@@ -217,21 +184,17 @@ function App() {
       );
     }
   }
+  //local Storage
+  function saveSettings(updatedTheme, updatedTime) {
+    if (!currentUser) return;
 
-  //study plan management
-  function resetAllData() {
-    savePlans([]);
-    setSelectedPlanId(null);
-    setSubject("");
-    setTask("");
-    setPriority("Medium");
-    setActiveSubtaskTaskId(null);
-    setSubtaskText("");
-    setActiveTaskId(null);
-    setIsRunning(false);
-    setSecondsLeft(studyTime * 60);
-
-    showMessage("All study data was reset.", "info");
+    localStorage.setItem(
+      `studyBuddySettings_${currentUser.email}`,
+      JSON.stringify({
+        theme: updatedTheme,
+        defaultStudyTime: updatedTime,
+      })
+    );
   }
 
   function createPlan() {
@@ -252,30 +215,19 @@ function App() {
     const updatedPlans = [...plans, newPlan];
 
     savePlans(updatedPlans);
-
     setSelectedPlanId(newPlan.id);
-    setSubject(newPlan.title);
     setPlanTitle("");
     setPlanDescription("");
+    setCurrentPage("planDetails");
 
     showMessage("Study plan created successfully.", "success");
   }
 
-  function openPlan(id) {
-    const selectedPlan = plans.find((plan) => plan.id === id);
-
-    setSelectedPlanId(id);
-    setActiveSubtaskTaskId(null);
-    setSubtaskText("");
-    setActiveTaskId(null);
-    setIsRunning(false);
-    setSecondsLeft(studyTime * 60);
-
-    if (selectedPlan) {
-      setSubject(selectedPlan.title);
-    }
-
-    showMessage("Study plan opened.", "info");
+  function openPlan(planId) {
+    setSelectedPlanId(planId);
+    setCurrentPage("planDetails");
+    setShowTaskForm(false);
+    setActiveSubtaskForm(null);
   }
 
   function deletePlan(id) {
@@ -284,34 +236,27 @@ function App() {
     savePlans(updatedPlans);
 
     if (selectedPlanId === id) {
-      const nextPlan = updatedPlans.length > 0 ? updatedPlans[0] : null;
-
-      setSelectedPlanId(nextPlan ? nextPlan.id : null);
-      setSubject(nextPlan ? nextPlan.title : "");
-      setActiveTaskId(null);
-      setIsRunning(false);
-      setSecondsLeft(studyTime * 60);
+      setSelectedPlanId(updatedPlans.length > 0 ? updatedPlans[0].id : null);
+      setCurrentPage("home");
     }
 
     showMessage("Study plan deleted.", "info");
   }
-
   //task management
   function addTask() {
     if (!selectedPlanId) {
-      showMessage("Please open a study plan first.", "error");
+      showMessage("Please select a study plan first.", "error");
       return;
     }
 
-    if (task.trim() === "") {
-      showMessage("Please enter a task first.", "error");
+    if (taskText.trim() === "") {
+      showMessage("Please enter a task title.", "error");
       return;
     }
 
     const newTask = {
       id: Date.now(),
-      subject: subject.trim(),
-      text: task.trim(),
+      text: taskText.trim(),
       priority,
       timerMinutes: taskTimerMinutes,
       completed: false,
@@ -327,20 +272,23 @@ function App() {
 
     savePlans(updatedPlans);
 
-    setTask("");
+    setTaskText("");
     setPriority("Medium");
-    setTaskTimerMinutes(studyTime);
+    setTaskTimerMinutes(defaultStudyTime);
+    setShowTaskForm(false);
 
-    showMessage("Task added to selected plan.", "success");
+    showMessage("Task added successfully.", "success");
   }
 
-  function toggleTask(id) {
+  function toggleTask(taskId) {
     const updatedPlans = plans.map((plan) =>
       plan.id === selectedPlanId
         ? {
             ...plan,
-            tasks: plan.tasks.map((item) =>
-              item.id === id ? { ...item, completed: !item.completed } : item
+            tasks: plan.tasks.map((task) =>
+              task.id === taskId
+                ? { ...task, completed: !task.completed }
+                : task
             ),
           }
         : plan
@@ -349,42 +297,38 @@ function App() {
     savePlans(updatedPlans);
   }
 
-  function deleteTask(id) {
+  function deleteTask(taskId) {
     const updatedPlans = plans.map((plan) =>
       plan.id === selectedPlanId
         ? {
             ...plan,
-            tasks: plan.tasks.filter((item) => item.id !== id),
+            tasks: plan.tasks.filter((task) => task.id !== taskId),
           }
         : plan
     );
 
     savePlans(updatedPlans);
 
-    if (activeSubtaskTaskId === id) {
-      setActiveSubtaskTaskId(null);
-      setSubtaskText("");
-    }
-
-    if (activeTaskId === id) {
-      setActiveTaskId(null);
+    if (activeTaskId === taskId) {
       setIsRunning(false);
-      setSecondsLeft(studyTime * 60);
+      setActiveTaskId(null);
+      setSecondsLeft(defaultStudyTime * 60);
     }
 
     showMessage("Task deleted.", "info");
   }
 
-  //subtask management
   function addSubtask(taskId) {
-    if (subtaskText.trim() === "") {
+    const value = subtaskInputs[taskId];
+
+    if (!value || value.trim() === "") {
       showMessage("Please enter a subtask.", "error");
       return;
     }
 
     const newSubtask = {
       id: Date.now(),
-      text: subtaskText.trim(),
+      text: value.trim(),
       completed: false,
     };
 
@@ -392,10 +336,10 @@ function App() {
       plan.id === selectedPlanId
         ? {
             ...plan,
-            tasks: plan.tasks.map((item) =>
-              item.id === taskId
-                ? { ...item, subtasks: [...item.subtasks, newSubtask] }
-                : item
+            tasks: plan.tasks.map((task) =>
+              task.id === taskId
+                ? { ...task, subtasks: [...task.subtasks, newSubtask] }
+                : task
             ),
           }
         : plan
@@ -403,28 +347,28 @@ function App() {
 
     savePlans(updatedPlans);
 
-    setSubtaskText("");
-    setActiveSubtaskTaskId(null);
+    setSubtaskInputs({ ...subtaskInputs, [taskId]: "" });
+    setActiveSubtaskForm(null);
 
     showMessage("Subtask added.", "success");
   }
-
+  //subtask management
   function toggleSubtask(taskId, subtaskId) {
     const updatedPlans = plans.map((plan) =>
       plan.id === selectedPlanId
         ? {
             ...plan,
-            tasks: plan.tasks.map((item) =>
-              item.id === taskId
+            tasks: plan.tasks.map((task) =>
+              task.id === taskId
                 ? {
-                    ...item,
-                    subtasks: item.subtasks.map((subtask) =>
+                    ...task,
+                    subtasks: task.subtasks.map((subtask) =>
                       subtask.id === subtaskId
                         ? { ...subtask, completed: !subtask.completed }
                         : subtask
                     ),
                   }
-                : item
+                : task
             ),
           }
         : plan
@@ -438,15 +382,15 @@ function App() {
       plan.id === selectedPlanId
         ? {
             ...plan,
-            tasks: plan.tasks.map((item) =>
-              item.id === taskId
+            tasks: plan.tasks.map((task) =>
+              task.id === taskId
                 ? {
-                    ...item,
-                    subtasks: item.subtasks.filter(
+                    ...task,
+                    subtasks: task.subtasks.filter(
                       (subtask) => subtask.id !== subtaskId
                     ),
                   }
-                : item
+                : task
             ),
           }
         : plan
@@ -455,43 +399,7 @@ function App() {
     savePlans(updatedPlans);
     showMessage("Subtask deleted.", "info");
   }
-
-  function clearAllTasks() {
-    if (!selectedPlanId) return;
-
-    const updatedPlans = plans.map((plan) =>
-      plan.id === selectedPlanId ? { ...plan, tasks: [] } : plan
-    );
-
-    savePlans(updatedPlans);
-    setIsRunning(false);
-    setSecondsLeft(studyTime * 60);
-    setActiveSubtaskTaskId(null);
-    setSubtaskText("");
-    setActiveTaskId(null);
-
-    showMessage("All tasks in this plan were cleared.", "info");
-  }
-
   //timer Settings
-
-  function updateStudyTime(value) {
-    if (value < 1) return;
-
-    setStudyTime(value);
-    setTaskTimerMinutes(value);
-
-    if (!isRunning) {
-      setSecondsLeft(value * 60);
-    }
-  }
-
-  function updateBreakTime(value) {
-    if (value < 1) return;
-    setBreakTime(value);
-  }
-
-  //Focus Timer
   function startTaskTimer(taskId, timerMinutes) {
     setActiveTaskId(taskId);
     setSecondsLeft(timerMinutes * 60);
@@ -501,39 +409,47 @@ function App() {
 
   function pauseTimer() {
     setIsRunning(false);
-    showMessage("Timer paused.", "info");
   }
 
   function resetTimer() {
     setIsRunning(false);
 
-    const activeTask = selectedPlanTasks.find((item) => item.id === activeTaskId);
+    const activeTask = allTasks.find((task) => task.id === activeTaskId);
 
     if (activeTask) {
       setSecondsLeft(activeTask.timerMinutes * 60);
     } else {
-      setSecondsLeft(studyTime * 60);
+      setSecondsLeft(defaultStudyTime * 60);
     }
 
-    showMessage("Timer was reset.", "info");
+    showMessage("Timer reset.", "info");
   }
 
+  function resetAllData() {
+    savePlans([]);
+    setSelectedPlanId(null);
+    setCurrentPage("home");
+    setIsRunning(false);
+    setActiveTaskId(null);
+    setSecondsLeft(defaultStudyTime * 60);
+    showMessage("All study data was reset.", "info");
+  }
   //react effects
   useEffect(() => {
-    let timerId;
+    let timer;
 
     if (isRunning && secondsLeft > 0) {
-      timerId = setInterval(() => {
-        setSecondsLeft((previousSeconds) => previousSeconds - 1);
+      timer = setInterval(() => {
+        setSecondsLeft((previous) => previous - 1);
       }, 1000);
     }
 
-    if (isRunning && secondsLeft === 0) {
+    if (secondsLeft === 0 && isRunning) {
       setIsRunning(false);
-      showMessage("Study session completed. Time for a break!", "success");
+      showMessage("Focus session completed. Take a short break!", "success");
     }
 
-    return () => clearInterval(timerId);
+    return () => clearInterval(timer);
   }, [isRunning, secondsLeft]);
 
   useEffect(() => {
@@ -552,63 +468,54 @@ function App() {
       setPlans(savedPlans);
       setSelectedPlanId(savedPlans.length > 0 ? savedPlans[0].id : null);
 
-      if (savedPlans.length > 0) {
-        setSubject(savedPlans[0].title);
-      }
-
       if (savedSettings) {
         setTheme(savedSettings.theme || "light");
-        setStudyTime(savedSettings.studyTime || 25);
-        setBreakTime(savedSettings.breakTime || 5);
-        setTaskTimerMinutes(savedSettings.studyTime || 25);
-        setSecondsLeft((savedSettings.studyTime || 25) * 60);
+        setDefaultStudyTime(savedSettings.defaultStudyTime || 25);
+        setTaskTimerMinutes(savedSettings.defaultStudyTime || 25);
+        setSecondsLeft((savedSettings.defaultStudyTime || 25) * 60);
       }
     }
   }, []);
-
   //statistics and Progress
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
-  const selectedPlanTasks = selectedPlan ? selectedPlan.tasks : [];
 
+  const allTasks = useMemo(() => {
+    return plans.flatMap((plan) => plan.tasks);
+  }, [plans]);
+
+  const selectedPlanTasks = selectedPlan ? selectedPlan.tasks : [];
   const selectedPlanSubtasks = selectedPlanTasks.flatMap(
-    (item) => item.subtasks
+    (task) => task.subtasks
   );
 
-  const allTasks = plans.flatMap((plan) => plan.tasks);
-  const allSubtasks = allTasks.flatMap((item) => item.subtasks);
-
-  const completedTasks = selectedPlanTasks.filter(
-    (item) => item.completed
+  const selectedCompletedTasks = selectedPlanTasks.filter(
+    (task) => task.completed
   ).length;
 
-  const completedSubtasks = selectedPlanSubtasks.filter(
+  const selectedCompletedSubtasks = selectedPlanSubtasks.filter(
     (subtask) => subtask.completed
   ).length;
 
   const selectedTotalItems =
     selectedPlanTasks.length + selectedPlanSubtasks.length;
 
-  const selectedCompletedItems = completedTasks + completedSubtasks;
+  const selectedCompletedItems =
+    selectedCompletedTasks + selectedCompletedSubtasks;
 
-  const totalCompletedTasks = allTasks.filter((item) => item.completed).length;
-  const totalCompletedSubtasks = allSubtasks.filter(
-    (subtask) => subtask.completed
-  ).length;
-
-  const progress =
+  const selectedProgress =
     selectedTotalItems === 0
       ? 0
       : Math.round((selectedCompletedItems / selectedTotalItems) * 100);
 
+  const completedTasks = allTasks.filter((task) => task.completed).length;
+
   const highPriorityTasks = allTasks.filter(
-    (item) => item.priority === "High" && !item.completed
+    (task) => task.priority === "High" && !task.completed
   ).length;
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const formattedTime = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
-
-    //main dashboard
+//main dashboard
   if (!currentUser) {
     return (
       <div className="auth-page">
@@ -619,7 +526,7 @@ function App() {
 
           <p className="muted">
             StudyBuddy helps students create study plans, manage tasks, and stay
-            focused with study timers.
+            focused with task-based timers.
           </p>
 
           {authMode === "register" && (
@@ -682,7 +589,6 @@ function App() {
             onClick={() => {
               setAuthMode(authMode === "login" ? "register" : "login");
               setMessage("");
-              clearAuthForm();
             }}
           >
             {authMode === "login"
@@ -698,340 +604,440 @@ function App() {
 
   return (
     <div className={`app ${theme}`}>
-      <main className="dashboard">
-        <header className="header">
-          <div>
-            <p className="badge">Study Session Dashboard</p>
-            <h1>Hello, {currentUser.name} 👋</h1>
-            <p>Organize your plans, tasks, subtasks, focus time, and progress.</p>
+      <aside className="sidebar">
+        <div>
+          <div className="logo-box">
+            <div className="logo">SB</div>
+
+            <div>
+              <h2>StudyBuddy</h2>
+              <p className="sidebar-user">{currentUser.name}</p>
+            </div>
           </div>
 
-          <button className="delete-btn" onClick={logoutUser}>
-            Logout
-          </button>
-        </header>
-
-        <section className="summary-row">
-          <div className="summary-card">
-            <h3>{plans.length}</h3>
-            <p>Study Plans</p>
-          </div>
-
-          <div className="summary-card">
-            <h3>{allTasks.length}</h3>
-            <p>Total Tasks</p>
-          </div>
-
-          <div className="summary-card">
-            <h3>{totalCompletedTasks + totalCompletedSubtasks}</h3>
-            <p>Completed Items</p>
-          </div>
-
-          <div className="summary-card warning">
-            <h3>{highPriorityTasks}</h3>
-            <p>High Priority Left</p>
-          </div>
-        </section>
-
-        {message && <p className={`message ${messageType}`}>{message}</p>}
-
-        <section className="grid">
-          <div className="card">
-            <h2>Create Study Plan</h2>
-
-            <label>Plan Title</label>
-            <input
-              type="text"
-              value={planTitle}
-              onChange={(event) => setPlanTitle(event.target.value)}
-              placeholder="Example: Software Engineering Final Project"
-            />
-
-            <label>Short Description</label>
-            <input
-              type="text"
-              value={planDescription}
-              onChange={(event) => setPlanDescription(event.target.value)}
-              placeholder="Example: Finish UI, testing, and documentation"
-            />
-
-            <button onClick={createPlan}>Create Study Plan</button>
-          </div>
-
-          <div className="card">
-            <h2>Your Study Plans</h2>
-
-            {plans.length === 0 ? (
-              <p className="empty">No study plans yet.</p>
-            ) : (
-              <ul className="task-list">
-                {plans.map((plan) => (
-                  <li
-                    key={plan.id}
-                    className={
-                      selectedPlanId === plan.id ? "selected-plan" : ""
-                    }
-                  >
-                    <div>
-                      <span onClick={() => openPlan(plan.id)}>
-                        {selectedPlanId === plan.id ? "✓ " : ""}
-                        {plan.title}
-                      </span>
-
-                      <p className="task-subject">{plan.description}</p>
-                      <p className="task-subject">
-                        {plan.tasks.length}{" "}
-                        {plan.tasks.length === 1 ? "task" : "tasks"} • Created{" "}
-                        {plan.createdAt}
-                      </p>
-                    </div>
-
-                    <div className="plan-actions">
-                      <button
-                        className="small-btn"
-                        onClick={() => openPlan(plan.id)}
-                      >
-                        Open
-                      </button>
-
-                      <button
-                        className="delete-btn"
-                        onClick={() => deletePlan(plan.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="card">
-            <h2>
-              Add Task{" "}
-              {selectedPlan ? (
-                <span className="small-text">for {selectedPlan.title}</span>
-              ) : (
-                ""
-              )}
-            </h2>
-
-            {!selectedPlan && (
-              <p className="empty">
-                Create or open a study plan before adding tasks.
-              </p>
-            )}
-
-            <label>Subject</label>
-            <input
-              type="text"
-              placeholder="Example: Software Engineering"
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              disabled={!selectedPlan}
-            />
-
-            <label>Task</label>
-            <input
-              type="text"
-              placeholder="Example: Finish final project"
-              value={task}
-              onChange={(event) => setTask(event.target.value)}
-              disabled={!selectedPlan}
-            />
-
-            <label>Priority</label>
-            <select
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
-              disabled={!selectedPlan}
+          <nav>
+            <button
+              className={currentPage === "home" ? "nav-active" : ""}
+              onClick={() => setCurrentPage("home")}
             >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
-
-            <div className="time-row">
-              <div>
-                <label>Task Focus Time</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={taskTimerMinutes}
-                  onChange={(event) => {
-                    const value = Number(event.target.value);
-                    if (value < 1) return;
-                    setTaskTimerMinutes(value);
-                  }}
-                  disabled={!selectedPlan}
-                />
-              </div>
-
-              <div>
-                <label>Break Time</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={breakTime}
-                  onChange={(event) =>
-                    updateBreakTime(Number(event.target.value))
-                  }
-                />
-              </div>
-            </div>
-
-            <button onClick={addTask} disabled={!selectedPlan}>
-              Add Task
+              Home
             </button>
-          </div>
 
-          <div className="card">
-            <div className="card-title-row">
-              <h2>
-                Task Checklist{" "}
-                {selectedPlan ? (
-                  <span className="small-text">for {selectedPlan.title}</span>
-                ) : (
-                  ""
-                )}
-              </h2>
+            <button
+              className={currentPage === "createPlan" ? "nav-active" : ""}
+              onClick={() => setCurrentPage("createPlan")}
+            >
+              Create Plan
+            </button>
 
-              {selectedPlanTasks.length > 0 && (
-                <button className="small-btn" onClick={clearAllTasks}>
-                  Clear All
+            <button
+              className={currentPage === "profile" ? "nav-active" : ""}
+              onClick={() => setCurrentPage("profile")}
+            >
+              Profile
+            </button>
+
+            <button
+              className={currentPage === "settings" ? "nav-active" : ""}
+              onClick={() => setCurrentPage("settings")}
+            >
+              Settings
+            </button>
+          </nav>
+        </div>
+
+        <button className="logout-btn" onClick={logoutUser}>
+          Logout
+        </button>
+      </aside>
+
+      <main className="main-content">
+        {message && <p className={`message floating ${messageType}`}>{message}</p>}
+
+        {currentPage === "home" && (
+          <>
+            <header className="page-header">
+              <p className="badge">Home</p>
+              <h1>Hello, {currentUser.name} 👋</h1>
+              <p className="muted">
+                Here you can see your study plans. Open a plan to view tasks,
+                use timers, or edit details.
+              </p>
+            </header>
+
+            <section className="summary-grid">
+              <div className="summary-card">
+                <h3>{plans.length}</h3>
+                <p>Study Plans</p>
+              </div>
+
+              <div className="summary-card">
+                <h3>{allTasks.length}</h3>
+                <p>Total Tasks</p>
+              </div>
+
+              <div className="summary-card">
+                <h3>{completedTasks}</h3>
+                <p>Completed Tasks</p>
+              </div>
+
+              <div className="summary-card warning">
+                <h3>{highPriorityTasks}</h3>
+                <p>High Priority Left</p>
+              </div>
+            </section>
+
+            <section className="card">
+              <div className="card-title-row">
+                <div>
+                  <h2>Your Study Plans</h2>
+                  <p className="muted">
+                    Choose a plan to open it. Creating and editing are separated
+                    to keep the interface clean.
+                  </p>
+                </div>
+
+                <button onClick={() => setCurrentPage("createPlan")}>
+                  + New Plan
                 </button>
-              )}
-            </div>
+              </div>
 
-            <p className="hint small-hint">
-              Open a study plan, then click a task or subtask to mark it as
-              completed.
-            </p>
+              {plans.length === 0 ? (
+                <div className="empty-state">
+                  <h3>No study plans yet</h3>
+                  <p>
+                    Create your first plan for a subject, exam, or project.
+                  </p>
 
-            {!selectedPlan ? (
-              <p className="empty">No study plan selected.</p>
-            ) : selectedPlanTasks.length === 0 ? (
-              <p className="empty">No tasks added in this plan yet.</p>
-            ) : (
-              <ul className="task-list">
-                {selectedPlanTasks.map((item) => (
-                  <li key={item.id} className="task-with-subtasks">
-                    <div className="task-main-content">
-                      <span
-                        className={item.completed ? "completed" : ""}
-                        onClick={() => toggleTask(item.id)}
-                      >
-                        {item.completed ? "✓ " : "○ "}
-                        {item.text}
-                      </span>
+                  <button onClick={() => setCurrentPage("createPlan")}>
+                    Create Study Plan
+                  </button>
+                </div>
+              ) : (
+                <div className="plan-card-grid">
+                  {plans.map((plan) => {
+                    const planTasks = plan.tasks;
+                    const planSubtasks = planTasks.flatMap(
+                      (task) => task.subtasks
+                    );
 
-                      <p className="task-subject">{item.subject}</p>
+                    const planTotal = planTasks.length + planSubtasks.length;
 
-                      <p className={`priority ${item.priority.toLowerCase()}`}>
-                        {item.priority} priority
-                      </p>
+                    const planCompleted =
+                      planTasks.filter((task) => task.completed).length +
+                      planSubtasks.filter((subtask) => subtask.completed)
+                        .length;
 
-                      <div className="subtask-box">
-                        <div className="subtask-header">
-                          <strong>Subtasks</strong>
+                    const planProgress =
+                      planTotal === 0
+                        ? 0
+                        : Math.round((planCompleted / planTotal) * 100);
+
+                    return (
+                      <div key={plan.id} className="plan-preview-card">
+                        <div>
+                          <p className="mini-badge">Study Plan</p>
+                          <h3>{plan.title}</h3>
+                          <p className="muted small-text">
+                            {plan.description}
+                          </p>
+                        </div>
+
+                        <div className="mini-progress">
+                          <div className="mini-progress-top">
+                            <span>Progress</span>
+                            <strong>{planProgress}%</strong>
+                          </div>
+
+                          <div className="progress-bar small-progress">
+                            <div
+                              className="progress-fill"
+                              style={{ width: `${planProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        <p className="muted small-text">
+                          {plan.tasks.length}{" "}
+                          {plan.tasks.length === 1 ? "task" : "tasks"} •
+                          Created {plan.createdAt}
+                        </p>
+
+                        <div className="plan-card-actions">
+                          <button onClick={() => openPlan(plan.id)}>
+                            Open Plan
+                          </button>
 
                           <button
-                            className="small-btn"
-                            onClick={() => {
-                              setActiveSubtaskTaskId(
-                                activeSubtaskTaskId === item.id ? null : item.id
-                              );
-                              setSubtaskText("");
-                            }}
+                            className="delete-btn"
+                            onClick={() => deletePlan(plan.id)}
                           >
-                            {activeSubtaskTaskId === item.id
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {currentPage === "createPlan" && (
+          <>
+            <header className="page-header">
+              <p className="badge">Create Plan</p>
+              <h1>Create a new study plan</h1>
+              <p className="muted">
+                This page is only for creating a plan, so the rest of the app
+                does not feel like it is always in edit mode.
+              </p>
+            </header>
+
+            <section className="card create-plan-card">
+              <h2>Plan Information</h2>
+
+              <label>Plan Title</label>
+              <input
+                type="text"
+                value={planTitle}
+                onChange={(event) => setPlanTitle(event.target.value)}
+                placeholder="Example: Software Engineering Final Project"
+              />
+
+              <label>Short Description</label>
+              <input
+                type="text"
+                value={planDescription}
+                onChange={(event) => setPlanDescription(event.target.value)}
+                placeholder="Example: Finish UI, documentation, and presentation"
+              />
+
+              <button onClick={createPlan}>Create Study Plan</button>
+            </section>
+          </>
+        )}
+
+        {currentPage === "planDetails" && selectedPlan && (
+          <>
+            <header className="page-header plan-detail-header">
+              <div>
+                <p className="badge">Plan Details</p>
+                <h1>{selectedPlan.title}</h1>
+                <p className="muted">{selectedPlan.description}</p>
+              </div>
+
+              <button className="secondary-btn" onClick={() => setCurrentPage("home")}>
+                Back to Home
+              </button>
+            </header>
+
+            <section className="card progress-card">
+              <div className="card-title-row">
+                <div>
+                  <h2>Plan Progress</h2>
+                  <p className="muted">
+                    {selectedCompletedItems} out of {selectedTotalItems} tasks
+                    and subtasks completed.
+                  </p>
+                </div>
+
+                <h2 className="progress-percent">{selectedProgress}%</h2>
+              </div>
+
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${selectedProgress}%` }}
+                ></div>
+              </div>
+            </section>
+
+            <section className="card">
+              <div className="card-title-row">
+                <div>
+                  <h2>Tasks</h2>
+                  <p className="muted">
+                    Tasks are shown in view mode first. Editing options appear
+                    only when you need them.
+                  </p>
+                </div>
+
+                <button onClick={() => setShowTaskForm(!showTaskForm)}>
+                  {showTaskForm ? "Close" : "+ Add Task"}
+                </button>
+              </div>
+
+              {showTaskForm && (
+                <div className="task-form inline-task-form">
+                  <label>Task Title</label>
+                  <input
+                    type="text"
+                    value={taskText}
+                    onChange={(event) => setTaskText(event.target.value)}
+                    placeholder="Example: Improve homepage design"
+                  />
+
+                  <div className="form-grid">
+                    <div>
+                      <label>Priority</label>
+                      <select
+                        value={priority}
+                        onChange={(event) => setPriority(event.target.value)}
+                      >
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label>Timer Minutes</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={taskTimerMinutes}
+                        onChange={(event) => {
+                          const value = Number(event.target.value);
+                          if (value < 1) return;
+                          setTaskTimerMinutes(value);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <button onClick={addTask}>Save Task</button>
+                </div>
+              )}
+
+              {selectedPlan.tasks.length === 0 ? (
+                <p className="empty">
+                  This plan has no tasks yet. Click “Add Task” when you are
+                  ready to add one.
+                </p>
+              ) : (
+                <div className="task-cards">
+                  {selectedPlan.tasks.map((task) => (
+                    <div key={task.id} className="task-card">
+                      <div className="task-top">
+                        <div>
+                          <h3
+                            className={task.completed ? "completed" : ""}
+                            onClick={() => toggleTask(task.id)}
+                          >
+                            {task.completed ? "✓ " : "○ "}
+                            {task.text}
+                          </h3>
+
+                          <p className={`priority ${task.priority.toLowerCase()}`}>
+                            {task.priority} priority
+                          </p>
+                        </div>
+
+                        <div className="task-actions">
+                          <button
+                            className="secondary-btn"
+                            onClick={() =>
+                              setActiveSubtaskForm(
+                                activeSubtaskForm === task.id ? null : task.id
+                              )
+                            }
+                          >
+                            {activeSubtaskForm === task.id
                               ? "Close"
                               : "+ Add Subtask"}
                           </button>
-                        </div>
 
-                        {item.subtasks.length === 0 ? (
-                          <p className="empty small-empty">No subtasks yet.</p>
+                          <button
+                            className="delete-btn"
+                            onClick={() => deleteTask(task.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="subtask-box view-subtasks">
+                        <h4>Subtasks</h4>
+
+                        {task.subtasks.length === 0 ? (
+                          <p className="empty small-text">No subtasks yet.</p>
                         ) : (
-                          <div className="subtask-list">
-                            {item.subtasks.map((subtask) => (
-                              <div
-                                key={subtask.id}
-                                className={
-                                  subtask.completed
-                                    ? "subtask completed"
-                                    : "subtask"
+                          task.subtasks.map((subtask) => (
+                            <div
+                              key={subtask.id}
+                              className={
+                                subtask.completed
+                                  ? "subtask completed"
+                                  : "subtask"
+                              }
+                            >
+                              <span
+                                onClick={() =>
+                                  toggleSubtask(task.id, subtask.id)
                                 }
                               >
-                                <span
-                                  onClick={() =>
-                                    toggleSubtask(item.id, subtask.id)
-                                  }
-                                >
-                                  {subtask.completed ? "✓" : "○"}{" "}
-                                  {subtask.text}
-                                </span>
+                                {subtask.completed ? "✓" : "○"} {subtask.text}
+                              </span>
 
-                                <button
-                                  className="mini-delete"
-                                  onClick={() =>
-                                    deleteSubtask(item.id, subtask.id)
-                                  }
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                              <button
+                                className="mini-delete"
+                                onClick={() =>
+                                  deleteSubtask(task.id, subtask.id)
+                                }
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))
                         )}
 
-                        {activeSubtaskTaskId === item.id && (
-                          <div className="subtask-input-row">
+                        {activeSubtaskForm === task.id && (
+                          <div className="subtask-input-row hidden-edit-row">
                             <input
                               type="text"
-                              value={subtaskText}
+                              value={subtaskInputs[task.id] || ""}
                               onChange={(event) =>
-                                setSubtaskText(event.target.value)
+                                setSubtaskInputs({
+                                  ...subtaskInputs,
+                                  [task.id]: event.target.value,
+                                })
                               }
-                              placeholder="Example: Write introduction"
+                              placeholder="Add a small step"
                             />
 
-                            <button onClick={() => addSubtask(item.id)}>
+                            <button onClick={() => addSubtask(task.id)}>
                               Save
                             </button>
                           </div>
                         )}
                       </div>
 
-                      <div className="task-timer-box">
+                      <div className="timer-box">
                         <div>
-                          <strong>Task Timer</strong>
-                          <p className="task-subject">
-                            Focus time: {item.timerMinutes || studyTime} minutes
+                          <h4>Task Timer</h4>
+                          <p className="muted small-text">
+                            Focus time: {task.timerMinutes} minutes
                           </p>
                         </div>
 
-                        {activeTaskId === item.id ? (
+                        {activeTaskId === task.id ? (
                           <>
-                            <div className="small-timer">{formattedTime}</div>
+                            <div className="timer">
+                              {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
+                            </div>
 
                             <div className="timer-buttons">
                               <button onClick={() => setIsRunning(true)}>
                                 Start
                               </button>
 
-                              <button
-                                className="secondary-btn"
-                                onClick={pauseTimer}
-                              >
+                              <button className="secondary-btn" onClick={pauseTimer}>
                                 Pause
                               </button>
 
-                              <button
-                                className="delete-btn"
-                                onClick={resetTimer}
-                              >
+                              <button className="delete-btn" onClick={resetTimer}>
                                 Reset
                               </button>
                             </div>
@@ -1039,10 +1045,7 @@ function App() {
                         ) : (
                           <button
                             onClick={() =>
-                              startTaskTimer(
-                                item.id,
-                                item.timerMinutes || studyTime
-                              )
+                              startTaskTimer(task.id, task.timerMinutes)
                             }
                           >
                             Start Timer
@@ -1050,157 +1053,136 @@ function App() {
                         )}
                       </div>
                     </div>
-
-                    <button
-                      className="delete-btn"
-                      onClick={() => deleteTask(item.id)}
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="card">
-            <h2>
-              Progress{" "}
-              {selectedPlan ? (
-                <span className="small-text">for {selectedPlan.title}</span>
-              ) : (
-                ""
+                  ))}
+                </div>
               )}
-            </h2>
+            </section>
+          </>
+        )}
 
-            {!selectedPlan ? (
-              <p className="empty">Open a study plan to track progress.</p>
-            ) : (
-              <>
-                <p>
-                  {selectedCompletedItems} out of {selectedTotalItems} tasks and
-                  subtasks completed
-                </p>
+        {currentPage === "profile" && (
+          <>
+            <header className="page-header">
+              <p className="badge">Profile</p>
+              <h1>Your Account</h1>
+              <p className="muted">
+                This page contains user information and simple account
+                statistics.
+              </p>
+            </header>
 
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${progress}%` }}
-                  ></div>
+            <section className="card profile-card">
+              <div className="profile-avatar">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+
+              <h2>{currentUser.name}</h2>
+              <p className="muted">{currentUser.email}</p>
+
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <h3>{plans.length}</h3>
+                  <p>Study Plans</p>
                 </div>
 
-                <h3>{progress}%</h3>
+                <div className="stat-card">
+                  <h3>{allTasks.length}</h3>
+                  <p>Total Tasks</p>
+                </div>
 
-                {selectedTotalItems === 0 && (
-                  <p className="empty">
-                    Add tasks and subtasks to this plan to start tracking
-                    progress.
-                  </p>
-                )}
+                <div className="stat-card">
+                  <h3>{completedTasks}</h3>
+                  <p>Completed Tasks</p>
+                </div>
+              </div>
 
-                {selectedTotalItems > 0 && progress === 100 && (
-                  <p className="success">
-                    Great job! Everything in this plan is completed.
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+              <div className="profile-info">
+                <p>
+                  <strong>Account type:</strong> Student
+                </p>
 
-          <div className="card profile-card">
-            <h2>Profile</h2>
+                <p>
+                  <strong>Joined:</strong> {currentUser.joinedAt || "Recently"}
+                </p>
 
-            <div className="profile-avatar">
-              {currentUser.name.charAt(0).toUpperCase()}
-            </div>
+                <p>
+                  <strong>Application:</strong> StudyBuddy
+                </p>
 
-            <h3>{currentUser.name}</h3>
-            <p className="muted">{currentUser.email}</p>
+                <p>
+                  <strong>Main purpose:</strong> Study planning and focus
+                  management
+                </p>
+              </div>
+            </section>
+          </>
+        )}
 
-            <div className="profile-info">
-              <p>
-                <strong>Joined:</strong> {currentUser.joinedAt || "Recently"}
-              </p>
-
-              <p>
-                <strong>Study Plans:</strong> {plans.length}
-              </p>
-
-              <p>
-                <strong>Total Tasks:</strong> {allTasks.length}
-              </p>
-
-              <p>
-                <strong>Completed Items:</strong>{" "}
-                {totalCompletedTasks + totalCompletedSubtasks}
-              </p>
-            </div>
-          </div>
-
-          <div className="card settings-card">
-            <h2>Settings</h2>
-
-            <label>Theme</label>
-            <select
-              value={theme}
-              onChange={(event) => {
-                setTheme(event.target.value);
-                saveSettings(event.target.value, studyTime, breakTime);
-              }}
-            >
-              <option value="light">Light Mode</option>
-              <option value="dark">Dark Mode</option>
-            </select>
-
-            <label>Default Study Time</label>
-            <input
-              type="number"
-              min="1"
-              value={studyTime}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-
-                if (value < 1) return;
-
-                setStudyTime(value);
-                setTaskTimerMinutes(value);
-
-                if (!isRunning) {
-                  setSecondsLeft(value * 60);
-                }
-
-                saveSettings(theme, value, breakTime);
-              }}
-            />
-
-            <label>Default Break Time</label>
-            <input
-              type="number"
-              min="1"
-              value={breakTime}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-
-                if (value < 1) return;
-
-                setBreakTime(value);
-                saveSettings(theme, studyTime, value);
-              }}
-            />
-
-            <div className="danger-zone">
-              <h3>Reset Data</h3>
+        {currentPage === "settings" && (
+          <>
+            <header className="page-header">
+              <p className="badge">Settings</p>
+              <h1>Customize StudyBuddy</h1>
               <p className="muted">
-                This removes all study plans, tasks, and subtasks for this
-                account.
+                Change appearance, timer settings, or reset your study data.
               </p>
+            </header>
 
-              <button className="delete-btn" onClick={resetAllData}>
-                Reset All Study Data
-              </button>
-            </div>
-          </div>
-        </section>
+            <section className="settings-grid">
+              <div className="card">
+                <h2>Appearance</h2>
+
+                <label>Theme</label>
+                <select
+                  value={theme}
+                  onChange={(event) => {
+                    setTheme(event.target.value);
+                    saveSettings(event.target.value, defaultStudyTime);
+                  }}
+                >
+                  <option value="light">Light Mode</option>
+                  <option value="dark">Dark Mode</option>
+                </select>
+              </div>
+
+              <div className="card">
+                <h2>Timer Settings</h2>
+
+                <label>Default Focus Time for New Tasks</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={defaultStudyTime}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+
+                    if (value < 1) return;
+
+                    setDefaultStudyTime(value);
+                    setTaskTimerMinutes(value);
+
+                    if (!isRunning) {
+                      setSecondsLeft(value * 60);
+                    }
+
+                    saveSettings(theme, value);
+                  }}
+                />
+              </div>
+
+              <div className="card danger-card">
+                <h2>Reset Data</h2>
+                <p className="muted">
+                  This deletes all study plans, tasks, and subtasks.
+                </p>
+
+                <button className="delete-btn" onClick={resetAllData}>
+                  Reset All Study Data
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
