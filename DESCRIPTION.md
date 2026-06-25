@@ -41,12 +41,11 @@ Large tasks can be divided into smaller subtasks. This helps users complete work
 
 ### Progress Tracking
 
-The application automatically calculates study progress based on completed tasks and subtasks. It also shows simple statistics that help users see how much work has already been finished.
+The application automatically calculates progress percentages based on completed tasks and subtasks within each study plan. It also shows simple statistics that help users see how much work has already been finished.
 
 ### Focus Timer
 
-A built-in timer is available for study sessions. Users can start, pause, and reset the timer, and different durations can be selected depending on the task.
-
+A built-in timer is available for study sessions. Users can start, pause, and reset the timer. Each task can have its own focus timer duration, allowing users to customize study sessions based on task requirements.
 ### Profile and Settings
 The application includes a profile page and a settings page. Users can change timer preferences, enable dark mode, and save all settings using Local Storage.
 
