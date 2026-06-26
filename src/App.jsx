@@ -34,6 +34,10 @@ function App() {
   const [activeTaskId, setActiveTaskId] = useState(null);
 
   const [theme, setTheme] = useState("light");
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editConfirmPassword, setEditConfirmPassword] = useState("");
   //authentication
   function showMessage(text, type = "info") {
     setMessage(text);
@@ -112,6 +116,12 @@ function App() {
 
     showMessage("Registration successful.", "success");
   }
+  useEffect(() => {
+    if (currentUser) {
+      setEditName(currentUser.name);
+      setEditEmail(currentUser.email);
+    }
+  }, [currentUser]);
 
   function loginUser() {
     if (!isValidEmail(email)) {
@@ -196,7 +206,113 @@ function App() {
       })
     );
   }
+ function updateProfile() {
+    if (editName.trim().length < 3) {
+      showMessage("Please enter a valid full name.", "error");
+      return;
+    }
 
+    if (!isValidEmail(editEmail)) {
+      showMessage("Please enter a valid email address.", "error");
+      return;
+    }
+
+    if (
+      editPassword &&
+      !isStrongPassword(editPassword)
+    ) {
+      showMessage(
+        "Password must contain at least 8 characters, uppercase, lowercase, and a number.",
+        "error"
+      );
+      return;
+    }
+
+    if (editPassword !== editConfirmPassword) {
+      showMessage("Passwords do not match.", "error");
+      return;
+    }
+
+    const users = JSON.parse(localStorage.getItem("studyBuddyUsers")) || [];
+
+    const emailTaken = users.find(
+      (user) =>
+        user.email === editEmail &&
+        user.email !== currentUser.email
+    );
+
+    if (emailTaken) {
+      showMessage("This email is already in use.", "error");
+      return;
+    }
+
+    const updatedUsers = users.map((user) => {
+      if (user.email !== currentUser.email) return user;
+
+      return {
+        ...user,
+        name: editName.trim(),
+        email: editEmail.trim(),
+        password: editPassword
+          ? editPassword
+          : user.password,
+      };
+    });
+
+    localStorage.setItem(
+      "studyBuddyUsers",
+      JSON.stringify(updatedUsers)
+    );
+
+    const updatedCurrentUser = updatedUsers.find(
+      (user) => user.email === editEmail
+    );
+
+    localStorage.setItem(
+      "studyBuddyCurrentUser",
+      JSON.stringify(updatedCurrentUser)
+    );
+
+    // Move plans if email changed
+    if (currentUser.email !== editEmail) {
+      const plans = localStorage.getItem(
+        `studyBuddyPlans_${currentUser.email}`
+      );
+
+      if (plans) {
+        localStorage.setItem(
+          `studyBuddyPlans_${editEmail}`,
+          plans
+        );
+
+        localStorage.removeItem(
+          `studyBuddyPlans_${currentUser.email}`
+        );
+      }
+
+      const settings = localStorage.getItem(
+        `studyBuddySettings_${currentUser.email}`
+      );
+
+      if (settings) {
+        localStorage.setItem(
+          `studyBuddySettings_${editEmail}`,
+          settings
+        );
+
+        localStorage.removeItem(
+          `studyBuddySettings_${currentUser.email}`
+        );
+      }
+    }
+
+    setCurrentUser(updatedCurrentUser);
+
+    setEditPassword("");
+    setEditConfirmPassword("");
+
+    showMessage("Profile updated successfully.", "success");
+  }
   function createPlan() {
     if (planTitle.trim() === "") {
       showMessage("Please enter a study plan title.", "error");
@@ -1178,6 +1294,42 @@ function App() {
 
                 <button className="delete-btn" onClick={resetAllData}>
                   Reset All Study Data
+                </button>
+              </div>
+              <div className="card">
+                <h2>Edit Profile</h2>
+
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                />
+
+                <label>New Password</label>
+                <input
+                  type="password"
+                  placeholder="Leave empty to keep current password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                />
+
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  value={editConfirmPassword}
+                  onChange={(e) => setEditConfirmPassword(e.target.value)}
+                />
+
+                <button onClick={updateProfile}>
+                  Save Changes
                 </button>
               </div>
             </section>
