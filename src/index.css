@@ -903,3 +903,6 @@ hr {
     align-items: stretch;
   }
 }
+.settings-grid .card:first-child {
+  grid-column: 1 / -1;
+}
